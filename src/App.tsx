@@ -8,7 +8,7 @@ import './App.css';
 
 function App() {
   const basename = process.env.NODE_ENV === 'production' 
-    ? '/[仓库名]'  // 替换为你的仓库名
+    ? '/Siraitia-grosvenorii-frontend'  // 替换为你的仓库名
     : '/';
 
   return (
@@ -17,8 +17,8 @@ function App() {
         <Navbar />
         <Container maxWidth="lg" sx={{ mt: 4 }}>
           <Routes>
-            <Route path="/" element={<ImageRecognition />} />
-            <Route path="/history" element={<HistoryRecord />} />
+            <Route path="/Siraitia-grosvenorii-frontend/" element={<ImageRecognition />} />
+            <Route path="/Siraitia-grosvenorii-frontend/history" element={<HistoryRecord />} />
           </Routes>
         </Container>
       </div>
