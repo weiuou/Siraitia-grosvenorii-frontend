@@ -23,14 +23,14 @@ const Navbar: React.FC = () => {
           <Button 
             color="inherit" 
             startIcon={<Home />}
-            onClick={() => navigate('/Siraitia-grosvenorii-frontend/')}
+            onClick={() => navigate('/')}
           >
             首页
           </Button>
           <Button 
             color="inherit" 
             startIcon={<History />}
-            onClick={() => navigate('/Siraitia-grosvenorii-frontend/history')}
+            onClick={() => navigate('/history')}
           >
             历史记录
           </Button>

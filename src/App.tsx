@@ -17,8 +17,8 @@ function App() {
         <Navbar />
         <Container maxWidth="lg" sx={{ mt: 4 }}>
           <Routes>
-            <Route path="/Siraitia-grosvenorii-frontend/" element={<ImageRecognition />} />
-            <Route path="/Siraitia-grosvenorii-frontend/history" element={<HistoryRecord />} />
+            <Route path="/" element={<ImageRecognition />} />
+            <Route path="/history" element={<HistoryRecord />} />
           </Routes>
         </Container>
       </div>
