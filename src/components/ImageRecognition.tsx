@@ -74,7 +74,14 @@ const ImageRecognition: React.FC = () => {
   };
 
   // 添加函数：将处理后的图片转换为 Blob
-  const getProcessedImageBlob = async (imageUrl: string): Promise<Blob> => {
+  const getProcessedImageBlob = useCallback(async (
+    imageUrl: string,
+    imageParams: {
+      brightness: number;
+      contrast: number;
+      grayscale: number;
+    }
+  ): Promise<Blob> => {
     return new Promise((resolve, reject) => {
       const img = new Image();
       img.crossOrigin = 'anonymous';
@@ -86,7 +93,7 @@ const ImageRecognition: React.FC = () => {
         
         if (ctx) {
           // 应用滤镜效果
-          ctx.filter = `brightness(${brightness}%) contrast(${contrast}%) grayscale(${grayscale}%)`;
+          ctx.filter = `brightness(${imageParams.brightness}%) contrast(${imageParams.contrast}%) grayscale(${imageParams.grayscale}%)`;
           ctx.drawImage(img, 0, 0);
           
           canvas.toBlob((blob) => {
@@ -101,7 +108,7 @@ const ImageRecognition: React.FC = () => {
       img.onerror = reject;
       img.src = imageUrl;
     });
-  };
+  }, []); // 现在不需要任何依赖
 
   const processNextImage = useCallback(async () => {
     if (!imageQueue[currentIndex]) {
@@ -115,9 +122,12 @@ const ImageRecognition: React.FC = () => {
       const currentFile = imageQueue[currentIndex];
       const currentUrl = URL.createObjectURL(currentFile);
 
-      // 获取处理后的图片 Blob
-      const processedBlob = await getProcessedImageBlob(currentUrl);
-      const processedUrl = URL.createObjectURL(processedBlob);
+      // 获取处理后的图片 Blob，传入当前的图片处理参数
+      const processedBlob = await getProcessedImageBlob(currentUrl, {
+        brightness,
+        contrast,
+        grayscale
+      });
 
       // 模拟API调用
       await new Promise(resolve => setTimeout(resolve, 2000));
@@ -135,7 +145,7 @@ const ImageRecognition: React.FC = () => {
       const historyItem: HistoryItem = {
         id: Date.now().toString(),
         date: new Date().toLocaleString(),
-        imageUrl: processedUrl, // 使用处理后的图片URL
+        imageUrl: URL.createObjectURL(processedBlob), // 使用处理后的图片URL
         ...newResult
       };
 
@@ -160,7 +170,7 @@ const ImageRecognition: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [currentIndex, imageQueue, brightness, contrast, grayscale]);
+  }, [currentIndex, imageQueue, brightness, contrast, grayscale, getProcessedImageBlob]); // 添加 getProcessedImageBlob 到依赖数组
 
   // 批量处理启动函数
   const handleBatchProcess = useCallback(async () => {
@@ -186,46 +196,6 @@ const ImageRecognition: React.FC = () => {
       setProcessing(false);
     }
   }, [currentIndex, processing, imageQueue, loading, processNextImage]);
-
-  const handleSubmit = async () => {
-    if (!selectedImage || !previewUrl) return;
-    setLoading(true);
-    
-    try {
-      // 获取处理后的图片
-      const processedBlob = await getProcessedImageBlob(previewUrl);
-      const processedUrl = URL.createObjectURL(processedBlob);
-
-      // 模拟API调用
-      await new Promise(resolve => setTimeout(resolve, 2000));
-
-      const newResult = {
-        category: '成熟期',
-        confidence: 0.95,
-        details: {
-          growthStage: '花期后期',
-          estimatedHarvestTime: '约2周后',
-          healthStatus: '良好'
-        }
-      };
-      
-      setResult(newResult);
-      
-      // 保存处理后的图片到历史记录
-      const historyItem: HistoryItem = {
-        id: Date.now().toString(),
-        date: new Date().toLocaleString(),
-        imageUrl: processedUrl,
-        ...newResult
-      };
-      
-      saveHistory(historyItem);
-    } catch (error) {
-      console.error('处理图片时出错:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   // 添加图片样式处理函数
   const getImageStyle = () => ({
