@@ -1,25 +1,28 @@
 import React from 'react';
-import logo from './logo.svg';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import Navbar from './components/Navbar';
+import HistoryRecord from './components/HistoryRecord';
+import ImageRecognition from './components/ImageRecognition';
+import { Container } from '@mui/material';
 import './App.css';
 
 function App() {
+  const basename = process.env.NODE_ENV === 'production' 
+    ? '/[仓库名]'  // 替换为你的仓库名
+    : '/';
+
   return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.tsx</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
-    </div>
+    <BrowserRouter basename={basename}>
+      <div className="App">
+        <Navbar />
+        <Container maxWidth="lg" sx={{ mt: 4 }}>
+          <Routes>
+            <Route path="/" element={<ImageRecognition />} />
+            <Route path="/history" element={<HistoryRecord />} />
+          </Routes>
+        </Container>
+      </div>
+    </BrowserRouter>
   );
 }
 
