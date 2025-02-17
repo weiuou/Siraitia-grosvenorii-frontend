@@ -1,15 +1,15 @@
 {
   "files": {
     "main.css": "/Siraitia-grosvenorii-frontend/static/css/main.83051331.css",
-    "main.js": "/Siraitia-grosvenorii-frontend/static/js/main.cb5e4ac3.js",
+    "main.js": "/Siraitia-grosvenorii-frontend/static/js/main.670b4ea9.js",
     "static/js/453.d855a71b.chunk.js": "/Siraitia-grosvenorii-frontend/static/js/453.d855a71b.chunk.js",
     "index.html": "/Siraitia-grosvenorii-frontend/index.html",
     "main.83051331.css.map": "/Siraitia-grosvenorii-frontend/static/css/main.83051331.css.map",
-    "main.cb5e4ac3.js.map": "/Siraitia-grosvenorii-frontend/static/js/main.cb5e4ac3.js.map",
+    "main.670b4ea9.js.map": "/Siraitia-grosvenorii-frontend/static/js/main.670b4ea9.js.map",
     "453.d855a71b.chunk.js.map": "/Siraitia-grosvenorii-frontend/static/js/453.d855a71b.chunk.js.map"
   },
   "entrypoints": [
     "static/css/main.83051331.css",
-    "static/js/main.cb5e4ac3.js"
+    "static/js/main.670b4ea9.js"
   ]
 }
