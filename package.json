@@ -2,7 +2,7 @@
   "name": "frontend",
   "version": "0.1.0",
   "private": true,
-  "homepage": "https://[你的github用户名].github.io/[仓库名]",
+  "homepage": "https://weiuou.github.io/Siraitia-grosvenorii-frontend",
   "dependencies": {
     "@emotion/react": "^11.7.1",
     "@emotion/styled": "^11.6.0",
