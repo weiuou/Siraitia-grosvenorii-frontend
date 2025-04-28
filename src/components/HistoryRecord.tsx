@@ -79,13 +79,22 @@ const HistoryRecord: React.FC = () => {
 
   return (
     <>
-      <Paper sx={{ p: 3, mt: 3 }}>
+      <Paper sx={{ p: 3, mt: 3, border: '1px solid #e1e4e8', borderRadius: '6px', boxShadow: '0 1px 0 rgba(27, 31, 35, 0.04)' }}>
         <Stack direction="row" justifyContent="space-between" mb={2}>
-          <Typography variant="h5">历史记录</Typography>
+          <Typography variant="h5" sx={{ fontWeight: 600, color: '#24292e', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif' }}>历史记录</Typography>
           <Stack direction="row" spacing={2}>
             <Button 
               startIcon={<Timeline />}
               onClick={() => console.log('显示统计分析')}
+              sx={{ 
+                backgroundColor: '#fafbfc', 
+                border: '1px solid rgba(27, 31, 35, 0.15)', 
+                color: '#24292e',
+                '&:hover': { backgroundColor: '#f3f4f6' },
+                textTransform: 'none',
+                fontWeight: 500,
+                borderRadius: '6px'
+              }}
             >
               统计分析
             </Button>
@@ -93,15 +102,22 @@ const HistoryRecord: React.FC = () => {
               startIcon={<GetApp />}
               variant="contained"
               onClick={() => setExportDialogOpen(true)}
+              sx={{ 
+                backgroundColor: '#2ea44f', 
+                '&:hover': { backgroundColor: '#2c974b' },
+                textTransform: 'none',
+                fontWeight: 500,
+                borderRadius: '6px'
+              }}
             >
               导出记录
             </Button>
           </Stack>
         </Stack>
         <TableContainer>
-          <Table>
-            <TableHead>
-              <TableRow>
+          <Table className="github-table">
+            <TableHead sx={{ backgroundColor: '#f6f8fa' }}>
+              <TableRow sx={{ '& th': { fontWeight: 600, color: '#24292e' } }}>
                 <TableCell>日期</TableCell>
                 <TableCell>类别</TableCell>
                 <TableCell>置信度</TableCell>

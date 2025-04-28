@@ -26,6 +26,7 @@ import {
 import { CloudUpload, Assessment } from '@mui/icons-material';
 import { saveHistory } from '../utils/storage';
 import { HistoryItem } from '../types/history';
+import { analyzeFlowers, getAnalysisResult } from '../services/flowerAnalysis';
 
 const ImageRecognition: React.FC = () => {
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
@@ -129,48 +130,50 @@ const ImageRecognition: React.FC = () => {
         grayscale
       });
 
-      // 模拟API调用
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      // 创建处理后的文件对象
+      const processedFile = new File([processedBlob], currentFile.name, { type: 'image/jpeg' });
+      
+      // 调用分析API并等待完整结果
+      const result = await analyzeFlowers(processedFile, 'your-token-here');
 
-      const newResult = {
-        category: `成熟期`, // 添加索引以区分不同结果
-        confidence: 0.95,
+      // 添加默认的生长阶段、预计采摘时间和健康状况信息
+      const enhancedResult = {
+        ...(result as unknown as object),
         details: {
-          growthStage: '花期后期',
-          estimatedHarvestTime: '约2周后',
+          growthStage: '花期',
+          estimatedHarvestTime: '约4-6周',
           healthStatus: '良好'
         }
       };
 
-      const historyItem: HistoryItem = {
-        id: Date.now().toString(),
-        date: new Date().toLocaleString(),
-        imageUrl: URL.createObjectURL(processedBlob), // 使用处理后的图片URL
-        ...newResult
-      };
-
-      saveHistory(historyItem);
-      
-      setProcessedResults(prev => [...prev, { 
-        file: new File([processedBlob], currentFile.name, { type: 'image/jpeg' }), 
-        result: newResult 
+      // 添加到处理结果列表
+      setProcessedResults(prev => [...prev, {
+        file: currentFile,
+        result: enhancedResult
       }]);
-      setResult(newResult);
-      setCurrentIndex(prev => prev + 1);
-      
+
+      setResult(enhancedResult);
+
+      setResult(result);
+
       // 更新预览为下一张图片
       const nextFile = imageQueue[currentIndex + 1];
       if (nextFile) {
         setSelectedImage(nextFile);
         setPreviewUrl(URL.createObjectURL(nextFile));
       }
-      
+
+      setCurrentIndex(prev => prev + 1);
     } catch (error) {
       console.error('处理图片时出错:', error);
+      setProcessedResults(prev => [...prev, {
+        file: imageQueue[currentIndex],
+        result: null
+      }]);
     } finally {
       setLoading(false);
     }
-  }, [currentIndex, imageQueue, brightness, contrast, grayscale, getProcessedImageBlob]); // 添加 getProcessedImageBlob 到依赖数组
+  }, [currentIndex, imageQueue, brightness, contrast, grayscale, getProcessedImageBlob]);
 
   // 批量处理启动函数
   const handleBatchProcess = useCallback(async () => {
@@ -197,6 +200,84 @@ const ImageRecognition: React.FC = () => {
     }
   }, [currentIndex, processing, imageQueue, loading, processNextImage]);
 
+  const [pollingInterval, setPollingInterval] = useState<NodeJS.Timeout | null>(null);
+
+  // 添加轮询效果
+  useEffect(() => {
+    const pendingResults = processedResults.filter(r => 
+      r.result?.status === 'pending' || r.result?.status === 'processing'
+    );
+    
+    if (pendingResults.length > 0 && !pollingInterval) {
+      const interval = setInterval(async () => {
+        let allCompleted = true;
+        
+        for (const result of pendingResults) {
+          if (result.result?.taskId) {
+            try {
+              const response = await getAnalysisResult(result.result?.taskId, 'your-token-here');
+              
+              if (response.status === 'completed' && response.result) {
+                setProcessedResults(prev => prev.map(r => 
+                  r.result?.taskId === result.result?.taskId ? {
+                    ...r,
+                    status: 'completed',
+                    result: response.result
+                  } : r
+                ));
+                
+                // 保存到历史记录
+                const historyItem: HistoryItem = {
+                  id: Date.now().toString(),
+                  date: new Date().toLocaleString(),
+                  imageUrl: URL.createObjectURL(result.file),
+                  ...response.result
+                };
+                saveHistory(historyItem);
+              } else if (response.status === 'failed') {
+                setProcessedResults(prev => prev.map(r => 
+                  r.result?.taskId === result.result?.taskId ? {
+                    ...r,
+                    status: 'failed',
+                    error: response.error || '分析失败'
+                  } : r
+                ));
+              } else {
+                allCompleted = false;
+              }
+            } catch (error) {
+              console.error('获取分析结果时出错:', error);
+              setProcessedResults(prev => prev.map(r => 
+                r.result?.taskId === result.result?.taskId ? {
+                  ...r,
+                  status: 'failed',
+                  error: error instanceof Error ? error.message : '未知错误'
+                } : r
+              ));
+            }
+          }
+        }
+        
+        // 如果所有任务都完成或失败，清除轮询
+        if (allCompleted) {
+          clearInterval(interval);
+          setPollingInterval(null);
+        }
+      }, 3000);
+      
+      setPollingInterval(interval);
+    } else if (pendingResults.length === 0 && pollingInterval) {
+      clearInterval(pollingInterval);
+      setPollingInterval(null);
+    }
+    
+    return () => {
+      if (pollingInterval) {
+        clearInterval(pollingInterval);
+      }
+    };
+  }, [processedResults]);
+
   // 添加图片样式处理函数
   const getImageStyle = () => ({
     filter: `
@@ -208,9 +289,17 @@ const ImageRecognition: React.FC = () => {
   });
 
   return (
-    <Grid container spacing={3}>
+    <Grid container spacing={3} sx={{ mt: 1 }}>
       <Grid item xs={12}>
-        <Paper sx={{ p: 3 }}>
+        <Paper sx={{ 
+          p: 3, 
+          border: '1px solid #e1e4e8',
+          borderRadius: '6px',
+          boxShadow: '0 1px 0 rgba(27, 31, 35, 0.04)',
+          '&:hover': {
+            boxShadow: '0 1px 3px rgba(27, 31, 35, 0.1)'
+          }
+        }}>
           <Stepper activeStep={result ? 2 : selectedImage ? 1 : 0}>
             {steps.map((label) => (
               <Step key={label}>
@@ -222,23 +311,54 @@ const ImageRecognition: React.FC = () => {
       </Grid>
 
       <Grid item xs={12} md={6}>
-        <Card>
+        <Card sx={{ 
+          border: '1px solid #e1e4e8',
+          borderRadius: '6px',
+          boxShadow: '0 1px 0 rgba(27, 31, 35, 0.04)',
+          '&:hover': {
+            boxShadow: '0 1px 3px rgba(27, 31, 35, 0.1)'
+          }
+        }}>
           <CardContent>
             <Typography variant="h6" gutterBottom>
               批量上传区域
             </Typography>
-            <Box className="upload-zone">
+            <Box className="upload-zone" sx={{
+              border: '1px dashed #e1e4e8',
+              borderRadius: '6px',
+              padding: '20px',
+              textAlign: 'center',
+              cursor: 'pointer',
+              backgroundColor: '#fafbfc',
+              transition: 'all 0.2s ease',
+              '&:hover': {
+                borderColor: '#2ea44f',
+                backgroundColor: '#f6f8fa'
+              },
+              position: 'relative',
+              minHeight: '200px',
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'center',
+              alignItems: 'center'
+            }}>
               {previewUrl ? (
                 <img 
                   src={previewUrl} 
                   alt="预览" 
                   className="preview-image"
-                  style={getImageStyle()} 
+                  style={{
+                    ...getImageStyle(),
+                    maxWidth: '100%',
+                    maxHeight: '200px',
+                    borderRadius: '4px',
+                    boxShadow: '0 1px 3px rgba(27, 31, 35, 0.1)'
+                  }} 
                 />
               ) : (
                 <Box className="upload-placeholder">
-                  <CloudUpload sx={{ fontSize: 60, color: 'primary.main' }} />
-                  <Typography>点击或拖拽上传图片</Typography>
+                  <CloudUpload sx={{ fontSize: 60, color: '#2ea44f', mb: 1 }} />
+                  <Typography sx={{ color: '#586069', fontSize: '0.9rem' }}>点击或拖拽上传图片</Typography>
                 </Box>
               )}
               <input
@@ -246,6 +366,15 @@ const ImageRecognition: React.FC = () => {
                 accept="image/*"
                 onChange={handleImageUpload}
                 className="hidden-input"
+                style={{
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  width: '100%',
+                  height: '100%',
+                  opacity: 0,
+                  cursor: 'pointer'
+                }}
               />
               <input
                 type="file"
@@ -253,6 +382,15 @@ const ImageRecognition: React.FC = () => {
                 multiple
                 onChange={handleMultipleUpload}
                 className="hidden-input"
+                style={{
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  width: '100%',
+                  height: '100%',
+                  opacity: 0,
+                  cursor: 'pointer'
+                }}
               />
             </Box>
             <Button
@@ -260,11 +398,22 @@ const ImageRecognition: React.FC = () => {
               onClick={handleBatchProcess}
               disabled={imageQueue.length === 0 || processing}
               fullWidth
-              sx={{ mt: 2 }}
+              sx={{ 
+                mt: 2,
+                backgroundColor: '#2ea44f',
+                border: '1px solid rgba(27, 31, 35, 0.15)',
+                '&:hover': {
+                  backgroundColor: '#2c974b'
+                },
+                textTransform: 'none',
+                fontWeight: 500,
+                borderRadius: '6px',
+                boxShadow: 'none'
+              }}
             >
               {processing ? (
                 <>
-                  <CircularProgress size={24} sx={{ mr: 1 }} />
+                  <CircularProgress size={24} sx={{ mr: 1, color: '#ffffff' }} />
                   正在处理 ({currentIndex + 1}/{imageQueue.length})
                 </>
               ) : (
@@ -276,7 +425,14 @@ const ImageRecognition: React.FC = () => {
       </Grid>
 
       <Grid item xs={12} md={6}>
-        <Card>
+        <Card sx={{ 
+          border: '1px solid #e1e4e8',
+          borderRadius: '6px',
+          boxShadow: '0 1px 0 rgba(27, 31, 35, 0.04)',
+          '&:hover': {
+            boxShadow: '0 1px 3px rgba(27, 31, 35, 0.1)'
+          }
+        }}>
           <CardContent>
             <Typography variant="h6" gutterBottom>
               识别结果
@@ -291,9 +447,9 @@ const ImageRecognition: React.FC = () => {
                 </Typography>
                 <Paper variant="outlined" sx={{ p: 2, mt: 2 }}>
                   <Typography variant="subtitle2">详细信息：</Typography>
-                  <Typography>生长阶段：{result.details.growthStage}</Typography>
-                  <Typography>预计采摘时间：{result.details.estimatedHarvestTime}</Typography>
-                  <Typography>健康状况：{result.details.healthStatus}</Typography>
+                  {/* <Typography>生长阶段：{result.details.growthStage}</Typography> */}
+                  {/* <Typography>预计采摘时间：{result.details.estimatedHarvestTime}</Typography> */}
+                  {/* <Typography>健康状况：{result.details.healthStatus}</Typography> */}
                 </Paper>
               </Box>
             ) : (
@@ -360,6 +516,18 @@ const ImageRecognition: React.FC = () => {
                     setContrast(100);
                     setGrayscale(0);
                   }}
+                  sx={{ 
+                    backgroundColor: '#fafbfc',
+                    border: '1px solid rgba(27, 31, 35, 0.15)',
+                    color: '#24292e',
+                    '&:hover': { 
+                      backgroundColor: '#f3f4f6',
+                      borderColor: 'rgba(27, 31, 35, 0.15)'
+                    },
+                    textTransform: 'none',
+                    fontWeight: 500,
+                    borderRadius: '6px'
+                  }}
                 >
                   重置调整
                 </Button>
@@ -409,7 +577,7 @@ const ImageRecognition: React.FC = () => {
                     </TableRow>
                   </TableHead>
                   <TableBody>
-                    {processedResults.map((item, index) => (
+                    {processedResults.filter(item => item.result?.status === 'completed').map((item, index) => (
                       <TableRow key={index}>
                         <TableCell>
                           <img
@@ -418,11 +586,11 @@ const ImageRecognition: React.FC = () => {
                             style={{ width: 50, height: 50, objectFit: 'cover' }}
                           />
                         </TableCell>
-                        <TableCell>{item.result.category}</TableCell>
+                        <TableCell>{item.result?.category || '处理中...'}</TableCell>
                         <TableCell>
-                          {(item.result.confidence * 100).toFixed(2)}%
+                          {item.result ? `${(item.result.confidence * 100).toFixed(2)}%` : '处理中...'}
                         </TableCell>
-                        <TableCell>{item.result.details.growthStage}</TableCell>
+                        <TableCell>{item.result?.details.growthStage || '处理中...'}</TableCell>
                       </TableRow>
                     ))}
                   </TableBody>

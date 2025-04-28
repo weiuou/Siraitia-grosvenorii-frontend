@@ -3,6 +3,11 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import Navbar from './components/Navbar';
 import HistoryRecord from './components/HistoryRecord';
 import ImageRecognition from './components/ImageRecognition';
+import Login from './components/Login';
+import Chat from './components/Chat';
+import AlgorithmIntroduction from './components/AlgorithmIntroduction';
+import ApiKeyManagement from './components/ApiKeyManagement';
+import ApiDocumentation from './components/ApiDocumentation';
 import { Container } from '@mui/material';
 import './App.css';
 
@@ -19,6 +24,11 @@ function App() {
           <Routes>
             <Route path="/" element={<ImageRecognition />} />
             <Route path="/history" element={<HistoryRecord />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/chat" element={<Chat />} />
+            <Route path="/algorithm" element={<AlgorithmIntroduction />} />
+            <Route path="/apikeys" element={<ApiKeyManagement />} />
+            <Route path="/api-docs" element={<ApiDocumentation />} />
           </Routes>
         </Container>
       </div>
