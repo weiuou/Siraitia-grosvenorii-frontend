@@ -17,35 +17,44 @@ import {
 import { ZoomIn, ZoomOut } from '@mui/icons-material';
 
 interface BoundingBox {
-  x: number;
-  y: number;
-  width: number;
-  height: number;
+  x1: number;
+  y1: number;
+  x2: number;
+  y2: number;
+  confidence?: number;
 }
 
-interface FlowerInfo {
-  id: number;
-  cropped_image: string;
-  gender: string;
-  confidence: number;
-  bounding_box: BoundingBox;
-  created_at: string;
+export interface FlowerInfo {
+  bbox: BoundingBox;
+  votes: Array<{
+    model_name: string;
+    class_id: number;
+    class_name?: string;
+    confidence: number;
+  }>;
+  final_class: {
+    class_name: string;
+    class_id: number;
+    confidence: number;
+    vote_count: number;
+  };
+  crop_image?: string;
 }
 
 interface AnalysisResultProps {
   taskId: number;
   status: string;
-  totalFlowers: number;
   flowers: FlowerInfo[];
   originalImage: string;
+  image_size: [number, number];
 }
 
 const FlowerAnalysisResult: React.FC<AnalysisResultProps> = ({
   taskId,
   status,
-  totalFlowers,
   flowers,
   originalImage,
+  image_size,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [selectedFlower, setSelectedFlower] = useState<FlowerInfo | null>(null);
@@ -69,25 +78,27 @@ const FlowerAnalysisResult: React.FC<AnalysisResultProps> = ({
 
       // 为每朵花绘制边界框和标签
       flowers.forEach((flower, index) => {
-        const { x, y, width, height } = flower.bounding_box;
+        const { x1, y1, x2, y2 } = flower.bbox;
+        const width = x2 - x1;
+        const height = y2 - y1;
         const color = `hsl(${(index * 360) / flowers.length}, 70%, 50%)`;
 
         // 绘制边界框
         ctx.strokeStyle = color;
         ctx.lineWidth = 2;
-        ctx.strokeRect(x, y, width, height);
+        ctx.strokeRect(x1, y1, width, height);
 
         // 绘制标签背景
         ctx.fillStyle = color;
-        ctx.fillRect(x, y - 20, 120, 20);
+        ctx.fillRect(x1, y1 - 20, 120, 20);
 
         // 绘制标签文字
         ctx.fillStyle = 'white';
         ctx.font = '12px Arial';
         ctx.fillText(
-          `${flower.gender} (${(flower.confidence * 100).toFixed(1)}%)`,
-          x + 5,
-          y - 5
+          `Class ${flower.final_class.class_id} (${(flower.final_class.confidence * 100).toFixed(1)}%)`,
+          x1 + 5,
+          y1 - 5
         );
       });
     };
@@ -123,16 +134,16 @@ const FlowerAnalysisResult: React.FC<AnalysisResultProps> = ({
                 状态: {status}
               </Typography>
               <Typography variant="body1" color="text.secondary">
-                识别到的花朵数量: {totalFlowers}
+                识别到的花朵数量: {flowers.length}
               </Typography>
             </CardContent>
           </Card>
 
           <Paper sx={{ mt: 2, maxHeight: 400, overflow: 'auto' }}>
             <List>
-              {flowers.map((flower) => (
+              {flowers.map((flower, index) => (
                 <ListItem
-                  key={flower.id}
+                  key={index}
                   button
                   onClick={() => handleFlowerClick(flower)}
                 >
@@ -140,10 +151,10 @@ const FlowerAnalysisResult: React.FC<AnalysisResultProps> = ({
                     primary={
                       <Box display="flex" alignItems="center">
                         <Typography variant="body1">
-                          花朵 #{flower.id}
+                          花朵 #{index + 1}
                         </Typography>
                         <Chip
-                          label={`${flower.gender}`}
+                          label={`Class ${flower.final_class.class_id}`}
                           size="small"
                           color="primary"
                           sx={{ ml: 1 }}
@@ -151,7 +162,7 @@ const FlowerAnalysisResult: React.FC<AnalysisResultProps> = ({
                       </Box>
                     }
                     secondary={
-                      `置信度: ${(flower.confidence * 100).toFixed(1)}%`
+                      `置信度: ${(flower.final_class.confidence * 100).toFixed(1)}% (${flower.votes.length} models)`
                     }
                   />
                 </ListItem>
@@ -219,25 +230,25 @@ const FlowerAnalysisResult: React.FC<AnalysisResultProps> = ({
         <DialogContent>
           {selectedFlower && (
             <Box>
-              <img
-                src={selectedFlower.cropped_image}
-                alt={`花朵 #${selectedFlower.id}`}
+                <img
+                src={selectedFlower.crop_image || ''}
+                alt={`花朵 #${flowers.indexOf(selectedFlower) + 1}`}
                 style={{ maxWidth: '100%', height: 'auto' }}
               />
               <Typography variant="h6" sx={{ mt: 2 }}>
                 花朵详情
               </Typography>
               <Typography variant="body1">
-                ID: {selectedFlower.id}
+                花朵 #{flowers.indexOf(selectedFlower) + 1}
               </Typography>
               <Typography variant="body1">
-                性别: {selectedFlower.gender}
+                类别ID: {selectedFlower.final_class.class_id}
               </Typography>
               <Typography variant="body1">
-                置信度: {(selectedFlower.confidence * 100).toFixed(1)}%
+                置信度: {(selectedFlower.final_class.confidence * 100).toFixed(1)}%
               </Typography>
               <Typography variant="body1">
-                创建时间: {new Date(selectedFlower.created_at).toLocaleString()}
+                投票数: {selectedFlower.final_class.vote_count}/{selectedFlower.votes.length}
               </Typography>
             </Box>
           )}

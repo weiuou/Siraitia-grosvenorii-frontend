@@ -8,6 +8,7 @@ export interface User {
 export interface LoginCredentials {
   username: string;
   password: string;
+  email: string;
 }
 
 export interface AuthState {

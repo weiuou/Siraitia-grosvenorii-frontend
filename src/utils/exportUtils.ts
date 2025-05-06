@@ -17,11 +17,11 @@ export const exportToExcel = async (records: HistoryItem[], filename: string) =>
 
         return {
           日期: record.date || '',
-          类别: record.category || '',
-          置信度: record.confidence ? `${(record.confidence * 100).toFixed(2)}%` : '',
-          生长阶段: record.details?.growthStage || '',
-          预计采摘时间: record.details?.estimatedHarvestTime || '',
-          健康状况: record.details?.healthStatus || '',
+          花朵数量: record.result?.flowers?.length || 0,
+          主要类别: record.result?.flowers?.[0]?.final_class?.class_id || '',
+          置信度: record.result?.flowers?.[0]?.final_class?.confidence 
+            ? `${(record.result.flowers[0].final_class.confidence * 100).toFixed(2)}%` 
+            : '',
           图片文件名: {
             v: imageFilename,
             l: { Target: `images/${imageFilename}` },

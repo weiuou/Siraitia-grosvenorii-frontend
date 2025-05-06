@@ -1,4 +1,5 @@
 import React, { useState, useCallback, useEffect } from 'react';
+import { TOKEN_KEY } from '../utils/auth';
 import {
   Paper,
   Button,
@@ -26,12 +27,13 @@ import {
 import { CloudUpload, Assessment } from '@mui/icons-material';
 import { saveHistory } from '../utils/storage';
 import { HistoryItem } from '../types/history';
-import { analyzeFlowers, getAnalysisResult } from '../services/flowerAnalysis';
+import { AnalysisResult, analyzeFlowers, FlowerDetection } from '../services/flowerAnalysis';
+import { FlowerInfo } from './FlowerAnalysisResult';
 
 const ImageRecognition: React.FC = () => {
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string>('');
-  const [result, setResult] = useState<any>(null);
+  const [result, setResult] = useState<AnalysisResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [images, setImages] = useState<File[]>([]);
   const [autoProcess, setAutoProcess] = useState(true);
@@ -43,7 +45,7 @@ const ImageRecognition: React.FC = () => {
   const [processing, setProcessing] = useState(false);
   const [processedResults, setProcessedResults] = useState<Array<{
     file: File;
-    result: any;
+    result: AnalysisResult | null;
   }>>([]);
 
   const steps = ['上传图片', '智能识别', '查看结果'];
@@ -111,6 +113,11 @@ const ImageRecognition: React.FC = () => {
     });
   }, []); // 现在不需要任何依赖
 
+  const token = localStorage.getItem(TOKEN_KEY);
+  if (!token) {
+    throw new Error('用户未登录，请先登录');
+  }
+
   const processNextImage = useCallback(async () => {
     if (!imageQueue[currentIndex]) {
       setProcessing(false);
@@ -134,27 +141,58 @@ const ImageRecognition: React.FC = () => {
       const processedFile = new File([processedBlob], currentFile.name, { type: 'image/jpeg' });
       
       // 调用分析API并等待完整结果
-      const result = await analyzeFlowers(processedFile, 'your-token-here');
-
-      // 添加默认的生长阶段、预计采摘时间和健康状况信息
-      const enhancedResult = {
-        ...(result as unknown as object),
-        details: {
-          growthStage: '花期',
-          estimatedHarvestTime: '约4-6周',
-          healthStatus: '良好'
-        }
+      const result = await analyzeFlowers(processedFile, token!);
+      console.log('分析结果:', result);
+      
+      // 为每朵花裁剪图片
+      const flowersWithCrops = await Promise.all(result.flowers.map(async (flower: FlowerDetection) => {
+        const img = new Image();
+        img.src = currentUrl;
+        await new Promise((resolve) => { img.onload = resolve; });
+        
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        const { x1, y1, x2, y2 } = flower.bbox;
+        const width = x2 - x1;
+        const height = y2 - y1;
+        
+        canvas.width = width;
+        canvas.height = height;
+        ctx?.drawImage(img, x1, y1, width, height, 0, 0, width, height);
+        
+        return new Promise<FlowerDetection>((resolve) => {
+          canvas.toBlob((blob) => {
+            if (blob) {
+              resolve({
+                ...flower,
+                crop_image: URL.createObjectURL(blob)
+              });
+            }
+          }, 'image/jpeg');
+        });
+      }));
+      
+      // 更新结果中的花朵信息，添加裁剪图片（仅用于显示）
+      const resultWithCrops = {
+        ...result,
+        flowers: flowersWithCrops
       };
-
+      
       // 添加到处理结果列表
       setProcessedResults(prev => [...prev, {
         file: currentFile,
-        result: enhancedResult
+        result: resultWithCrops
       }]);
 
-      setResult(enhancedResult);
+      setResult(resultWithCrops);
 
-      setResult(result);
+      // 保存到历史记录（使用原始分析结果）
+      saveHistory({
+        id: Date.now().toString(),
+        date: new Date().toLocaleString(),
+        result: resultWithCrops,  // 使用原始结果，不包含裁剪图片
+        imageUrl: currentUrl
+      });
 
       // 更新预览为下一张图片
       const nextFile = imageQueue[currentIndex + 1];
@@ -199,84 +237,6 @@ const ImageRecognition: React.FC = () => {
       setProcessing(false);
     }
   }, [currentIndex, processing, imageQueue, loading, processNextImage]);
-
-  const [pollingInterval, setPollingInterval] = useState<NodeJS.Timeout | null>(null);
-
-  // 添加轮询效果
-  useEffect(() => {
-    const pendingResults = processedResults.filter(r => 
-      r.result?.status === 'pending' || r.result?.status === 'processing'
-    );
-    
-    if (pendingResults.length > 0 && !pollingInterval) {
-      const interval = setInterval(async () => {
-        let allCompleted = true;
-        
-        for (const result of pendingResults) {
-          if (result.result?.taskId) {
-            try {
-              const response = await getAnalysisResult(result.result?.taskId, 'your-token-here');
-              
-              if (response.status === 'completed' && response.result) {
-                setProcessedResults(prev => prev.map(r => 
-                  r.result?.taskId === result.result?.taskId ? {
-                    ...r,
-                    status: 'completed',
-                    result: response.result
-                  } : r
-                ));
-                
-                // 保存到历史记录
-                const historyItem: HistoryItem = {
-                  id: Date.now().toString(),
-                  date: new Date().toLocaleString(),
-                  imageUrl: URL.createObjectURL(result.file),
-                  ...response.result
-                };
-                saveHistory(historyItem);
-              } else if (response.status === 'failed') {
-                setProcessedResults(prev => prev.map(r => 
-                  r.result?.taskId === result.result?.taskId ? {
-                    ...r,
-                    status: 'failed',
-                    error: response.error || '分析失败'
-                  } : r
-                ));
-              } else {
-                allCompleted = false;
-              }
-            } catch (error) {
-              console.error('获取分析结果时出错:', error);
-              setProcessedResults(prev => prev.map(r => 
-                r.result?.taskId === result.result?.taskId ? {
-                  ...r,
-                  status: 'failed',
-                  error: error instanceof Error ? error.message : '未知错误'
-                } : r
-              ));
-            }
-          }
-        }
-        
-        // 如果所有任务都完成或失败，清除轮询
-        if (allCompleted) {
-          clearInterval(interval);
-          setPollingInterval(null);
-        }
-      }, 3000);
-      
-      setPollingInterval(interval);
-    } else if (pendingResults.length === 0 && pollingInterval) {
-      clearInterval(pollingInterval);
-      setPollingInterval(null);
-    }
-    
-    return () => {
-      if (pollingInterval) {
-        clearInterval(pollingInterval);
-      }
-    };
-  }, [processedResults]);
 
   // 添加图片样式处理函数
   const getImageStyle = () => ({
@@ -439,18 +399,22 @@ const ImageRecognition: React.FC = () => {
             </Typography>
             {result ? (
               <Box>
-                <Typography variant="h4" color="primary" gutterBottom>
-                  {result.category}
+                <Typography variant="h6" gutterBottom>
+                  检测到 {result.flowers.length} 朵花
                 </Typography>
-                <Typography variant="subtitle1" gutterBottom>
-                   置信度：{(result.confidence * 100).toFixed(2)}%
-                </Typography>
-                <Paper variant="outlined" sx={{ p: 2, mt: 2 }}>
-                  <Typography variant="subtitle2">详细信息：</Typography>
-                  {/* <Typography>生长阶段：{result.details.growthStage}</Typography> */}
-                  {/* <Typography>预计采摘时间：{result.details.estimatedHarvestTime}</Typography> */}
-                  {/* <Typography>健康状况：{result.details.healthStatus}</Typography> */}
-                </Paper>
+                {result.flowers.map((flower: FlowerDetection, index: number) => (
+                  <Paper key={index} variant="outlined" sx={{ p: 2, mt: 2 }}>
+                    <Typography variant="subtitle1">
+                      花朵 {index + 1}: 类别 {flower.final_class.class_name}
+                    </Typography>
+                    <Typography>
+                      置信度: {flower.bbox.confidence ? (flower.bbox.confidence * 100).toFixed(2) + '%' : 'N/A'}
+                    </Typography>
+                    <Typography>
+                      模型投票: {flower.final_class.class_name}({flower.votes.filter(vote => vote.class_name=== flower.final_class.class_name).length}/{flower.votes.length})
+                    </Typography>
+                  </Paper>
+                ))}
               </Box>
             ) : (
               <Box className="result-placeholder">
@@ -573,11 +537,33 @@ const ImageRecognition: React.FC = () => {
                       <TableCell>图片</TableCell>
                       <TableCell>类别</TableCell>
                       <TableCell>置信度</TableCell>
-                      <TableCell>生长阶段</TableCell>
+                      <TableCell>裁剪图片</TableCell>
                     </TableRow>
                   </TableHead>
                   <TableBody>
-                    {processedResults.filter(item => item.result?.status === 'completed').map((item, index) => (
+                    {processedResults.flatMap((item, index) => 
+                    item.result?.flowers?.map((flower: FlowerInfo, idx: number) => (
+                      <TableRow key={`${index}-${idx}`}>
+                        <TableCell>
+                          <img
+                            src={URL.createObjectURL(item.file)}
+                            alt={`原图 ${index + 1}`}
+                            style={{ width: 50, height: 50, objectFit: 'cover' }}
+                          />
+                        </TableCell>
+                        <TableCell> {flower.final_class.class_name}</TableCell>
+                        <TableCell>
+                          {flower.bbox.confidence ? (flower.bbox.confidence * 100).toFixed(2) + '%' : 'N/A'}
+                        </TableCell>
+                        <TableCell>
+                          <img
+                            src={flower.crop_image}
+                            alt={`花朵 ${index + 1}-${idx + 1}`}
+                            style={{ width: 50, height: 50, objectFit: 'cover' }}
+                          />
+                        </TableCell>
+                      </TableRow>
+                    )) || (
                       <TableRow key={index}>
                         <TableCell>
                           <img
@@ -586,13 +572,13 @@ const ImageRecognition: React.FC = () => {
                             style={{ width: 50, height: 50, objectFit: 'cover' }}
                           />
                         </TableCell>
-                        <TableCell>{item.result?.category || '处理中...'}</TableCell>
-                        <TableCell>
-                          {item.result ? `${(item.result.confidence * 100).toFixed(2)}%` : '处理中...'}
-                        </TableCell>
-                        <TableCell>{item.result?.details.growthStage || '处理中...'}</TableCell>
+                        <TableCell>处理中...</TableCell>
+                        <TableCell>处理中...</TableCell>
+                        <TableCell>处理中...</TableCell>
+                        <TableCell>处理中...</TableCell>
                       </TableRow>
-                    ))}
+                    )
+                  )}
                   </TableBody>
                 </Table>
               </TableContainer>

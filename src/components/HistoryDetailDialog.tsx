@@ -25,12 +25,9 @@ const HistoryDetailDialog: React.FC<Props> = ({ open, record, onClose }) => {
   const {
     date = '',
     imageUrl = '',
-    category = '',
-    confidence = 0,
-    details = {
-      growthStage: '',
-      estimatedHarvestTime: '',
-      healthStatus: ''
+    result = {
+      flowers: [],
+      image_size: [0, 0]
     }
   } = record;
 
@@ -63,16 +60,28 @@ const HistoryDetailDialog: React.FC<Props> = ({ open, record, onClose }) => {
               <Typography variant="body1" gutterBottom>
                 识别时间：{date || '未知'}
               </Typography>
-              <Typography variant="h5" color="primary" gutterBottom>
-                {category || '未知类别'}
-              </Typography>
-              <Typography variant="body1" gutterBottom>
-                置信度：{confidence ? `${(confidence * 100).toFixed(2)}%` : '未知'}
-              </Typography>
-              <Typography variant="subtitle1" gutterBottom>详细信息：</Typography>
-              <Typography>生长阶段：{details?.growthStage || '未知'}</Typography>
-              <Typography>预计采摘时间：{details?.estimatedHarvestTime || '未知'}</Typography>
-              <Typography>健康状况：{details?.healthStatus || '未知'}</Typography>
+              {result.flowers.length > 0 ? (
+                <>
+                  <Typography variant="body1" gutterBottom>
+                    检测到 {result.flowers.length} 朵花
+                  </Typography>
+                  {result.flowers.map((flower, index) => (
+                    <Box key={index} sx={{ mb: 2 }}>
+                      <Typography variant="subtitle1">
+                        花朵 {index + 1}: 类别 {flower.final_class.class_id}
+                      </Typography>
+                      <Typography>
+                        置信度: {(flower.final_class.confidence * 100).toFixed(2)}%
+                      </Typography>
+                      <Typography>
+                        模型投票: {flower.final_class.vote_count}/{flower.votes.length}
+                      </Typography>
+                    </Box>
+                  ))}
+                </>
+              ) : (
+                <Typography color="text.secondary">无检测结果</Typography>
+              )}
             </Paper>
           </Grid>
         </Grid>

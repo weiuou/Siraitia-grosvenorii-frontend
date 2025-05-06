@@ -1,12 +1,8 @@
+import { AnalysisResult } from '../services/flowerAnalysis';
+
 export interface HistoryItem {
   id: string;
   date: string;
   imageUrl: string;
-  category: string;
-  confidence: number;
-  details: {
-    growthStage: string;
-    estimatedHarvestTime: string;
-    healthStatus: string;
-  };
+  result: AnalysisResult;
 }

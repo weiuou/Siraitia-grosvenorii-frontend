@@ -2,11 +2,11 @@ import { User, LoginCredentials } from '../types/user';
 import axios from 'axios';
 
 // API基础URL
-const API_BASE_URL = 'http://127.0.0.1:8000';
+const API_BASE_URL = 'http://127.0.0.1:8001';
 
 // 存储用户信息和token的本地存储键
-const USER_KEY = 'current_user';
-const TOKEN_KEY = 'access_token';
+export const USER_KEY = 'current_user';
+export const TOKEN_KEY = 'access_token';
 
 // 设置axios拦截器
 axios.interceptors.request.use(
@@ -42,9 +42,10 @@ export const register = (credentials: LoginCredentials): Promise<User> => {
     try {
       // 发送注册请求
       const response = await axios.post(
-        `${API_BASE_URL}/auth/register`,
+        `${API_BASE_URL}/register`,
         {
           username: credentials.username,
+          email: credentials.email,
           password: credentials.password
         },
         {
@@ -89,7 +90,7 @@ export const login = (credentials: LoginCredentials): Promise<User> => {
     try {
       // 发送登录请求
       const response = await axios.post(
-        `${API_BASE_URL}/auth/login`,
+        `${API_BASE_URL}/token`,
         {
           username: credentials.username,
           password: credentials.password
@@ -102,18 +103,22 @@ export const login = (credentials: LoginCredentials): Promise<User> => {
         }
       );
       
-      // 保存token和用户信息
-      localStorage.setItem(TOKEN_KEY, response.data.access_token);
+      // 保存token
+      const token = response.data.access_token;
+      localStorage.setItem(TOKEN_KEY, token);
       
-      // 使用后端返回的用户信息
+      // 通过token获取用户信息
+      const userResponse = await axios.get(`${API_BASE_URL}/users/me`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
       const userData: User = {
-        id: response.data.user.id,
-        username: response.data.user.username,
-        name: response.data.user.username,
+        id: userResponse.data.id,
+        username: userResponse.data.username,
+        name: userResponse.data.username,
         role: 'user'
       };
       
-      // 存储用户信息到本地
       localStorage.setItem(USER_KEY, JSON.stringify(userData));
       // 触发storage事件以通知其他标签页
       window.dispatchEvent(new Event('storage'));

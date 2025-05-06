@@ -10,6 +10,7 @@ export const saveHistory = (record: HistoryItem) => {
 
 export const getHistory = (): HistoryItem[] => {
   const data = localStorage.getItem(STORAGE_KEY);
+  console.log("加载历史",data);
   return data ? JSON.parse(data) : [];
 };
 

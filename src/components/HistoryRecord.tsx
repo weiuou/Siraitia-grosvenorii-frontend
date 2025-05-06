@@ -119,33 +119,90 @@ const HistoryRecord: React.FC = () => {
             <TableHead sx={{ backgroundColor: '#f6f8fa' }}>
               <TableRow sx={{ '& th': { fontWeight: 600, color: '#24292e' } }}>
                 <TableCell>日期</TableCell>
+                <TableCell>图片</TableCell>
                 <TableCell>类别</TableCell>
                 <TableCell>置信度</TableCell>
-                <TableCell>生长阶段</TableCell>
+                <TableCell>裁剪图片</TableCell>
                 <TableCell>操作</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
-              {records.map((record) => (
-                <TableRow key={record.id}>
-                  <TableCell>{record.date}</TableCell>
-                  <TableCell>{record.category}</TableCell>
-                  <TableCell>{(record.confidence * 100).toFixed(2)}%</TableCell>
-                  <TableCell>{record.details.growthStage}</TableCell>
-                  <TableCell>
-                    <Tooltip title="查看详情">
-                      <IconButton onClick={() => handleView(record)}>
-                        <Visibility />
-                      </IconButton>
-                    </Tooltip>
-                    <Tooltip title="删除记录">
-                      <IconButton onClick={() => handleDelete(record.id)}>
-                        <Delete />
-                      </IconButton>
-                    </Tooltip>
-                  </TableCell>
-                </TableRow>
-              ))}
+              {records.flatMap((record) => 
+                record.result?.flowers?.map((flower, flowerIndex) => (
+                  <TableRow key={`${record.id}-${flowerIndex}`}>
+                    <TableCell>{record.date}</TableCell>
+                    <TableCell>
+                      <img
+                        src={record.imageUrl}
+                        alt={`原图 ${flowerIndex + 1}`}
+                        style={{ width: 50, height: 50, objectFit: 'cover' }}
+                      />
+                    </TableCell>
+                    <TableCell>
+                      {flower.final_class.class_name}
+                    </TableCell>
+                    <TableCell>
+                      {flower.bbox.confidence 
+                        ? `${(flower.bbox.confidence * 100).toFixed(2)}%`
+                        : 'N/A'}
+                    </TableCell>
+                    <TableCell>
+                      {flower.bbox && (
+                        <div style={{ width: 50, height: 50, overflow: 'hidden', position: 'relative' }}>
+                          <img
+                            src={flower.crop_image}
+                            alt={`花朵 ${flowerIndex + 1}`}
+                            style={{
+                              width: '50px',
+                              height: '50px',
+                              objectFit: 'cover',
+                              borderRadius: '4px'
+                            }}
+                          />
+                        </div>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <Tooltip title="查看详情">
+                        <IconButton onClick={() => handleView(record)}>
+                          <Visibility />
+                        </IconButton>
+                      </Tooltip>
+                      <Tooltip title="删除记录">
+                        <IconButton onClick={() => handleDelete(record.id)}>
+                          <Delete />
+                        </IconButton>
+                      </Tooltip>
+                    </TableCell>
+                  </TableRow>
+                )) || (
+                  <TableRow key={record.id}>
+                    <TableCell>{record.date}</TableCell>
+                    <TableCell>
+                      <img
+                        src={record.imageUrl}
+                        alt="原图"
+                        style={{ width: 50, height: 50, objectFit: 'cover' }}
+                      />
+                    </TableCell>
+                    <TableCell>处理中...</TableCell>
+                    <TableCell>处理中...</TableCell>
+                    <TableCell>处理中...</TableCell>
+                    <TableCell>
+                      <Tooltip title="查看详情">
+                        <IconButton onClick={() => handleView(record)}>
+                          <Visibility />
+                        </IconButton>
+                      </Tooltip>
+                      <Tooltip title="删除记录">
+                        <IconButton onClick={() => handleDelete(record.id)}>
+                          <Delete />
+                        </IconButton>
+                      </Tooltip>
+                    </TableCell>
+                  </TableRow>
+                )
+              )}
             </TableBody>
           </Table>
         </TableContainer>

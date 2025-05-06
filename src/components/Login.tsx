@@ -21,7 +21,8 @@ const Login: React.FC = () => {
   const [isLogin, setIsLogin] = useState(true);
   const [credentials, setCredentials] = useState<LoginCredentials>({
     username: '',
-    password: ''
+    password: '',
+    email: ''
   });
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -123,6 +124,19 @@ const Login: React.FC = () => {
             required
             variant="outlined"
           />
+
+          {!isLogin && (
+            <TextField
+              label="邮箱"
+              name="email"
+              type="email"
+              value={credentials.email}
+              onChange={handleChange}
+              fullWidth
+              required
+              variant="outlined"
+            />
+          )}
 
           <TextField
             label="密码"
