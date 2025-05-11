@@ -21,7 +21,6 @@ import ReactMarkdown from 'react-markdown';
 import 'katex/dist/katex.min.css';
 // 移除不需要的身份验证导入
 // import { getCurrentUser, isAuthenticated } from '../utils/auth';
-import { useNavigate } from 'react-router-dom';
 
 // 定义消息类型
 interface Message {
@@ -48,11 +47,36 @@ const Chat: React.FC = () => {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [currentConversation, setCurrentConversation] = useState<Conversation | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+    // 创建新对话
+    const createNewConversation = React.useCallback(() => {
+      const newConversation: Conversation = {
+        id: Date.now().toString(),
+        title: `新对话 ${conversations.length + 1}`,
+        messages: [
+          {
+            id: '0',
+            content: '你是一位专业的罗汉果种植农业专家，拥有丰富的罗汉果种植、培育和管理经验。你只回答与罗汉果（Siraitia grosvenorii）相关的问题，包括但不限于罗汉果的种植技术、病虫害防治、授粉技巧、采收加工、品种选择等方面的专业知识。如果用户询问与罗汉果无关的问题，请礼貌地告知用户你只能回答罗汉果相关的问题，并建议用户提出罗汉果相关的问题。请用专业、清晰、易懂的语言回答问题，必要时可以提供具体的操作步骤和注意事项。',
+            role: 'system',
+            timestamp: new Date()
+          },
+          {
+            id: '1',
+            content: '您好！我是罗汉果种植专家，可以为您提供罗汉果种植、培育和管理方面的专业建议。请问您有什么关于罗汉果的问题需要咨询吗？',
+            role: 'assistant',
+            timestamp: new Date()
+          }
+        ],
+        createdAt: new Date()
+      };
+      setConversations([...conversations, newConversation]);
+      setCurrentConversation(newConversation);
+      setInput('');
+    }, [conversations]);
   
   // 初始化一个新对话
   useEffect(() => {
     createNewConversation();
-  }, []);
+  });
 
   // 滚动到最新消息
   useEffect(() => {
@@ -63,31 +87,6 @@ const Chat: React.FC = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
-  // 创建新对话
-  const createNewConversation = () => {
-    const newConversation: Conversation = {
-      id: Date.now().toString(),
-      title: `新对话 ${conversations.length + 1}`,
-      messages: [
-        {
-          id: '0',
-          content: '你是一位专业的罗汉果种植农业专家，拥有丰富的罗汉果种植、培育和管理经验。你只回答与罗汉果（Siraitia grosvenorii）相关的问题，包括但不限于罗汉果的种植技术、病虫害防治、授粉技巧、采收加工、品种选择等方面的专业知识。如果用户询问与罗汉果无关的问题，请礼貌地告知用户你只能回答罗汉果相关的问题，并建议用户提出罗汉果相关的问题。请用专业、清晰、易懂的语言回答问题，必要时可以提供具体的操作步骤和注意事项。',
-          role: 'system',
-          timestamp: new Date()
-        },
-        {
-          id: '1',
-          content: '您好！我是罗汉果种植专家，可以为您提供罗汉果种植、培育和管理方面的专业建议。请问您有什么关于罗汉果的问题需要咨询吗？',
-          role: 'assistant',
-          timestamp: new Date()
-        }
-      ],
-      createdAt: new Date()
-    };
-    setConversations([...conversations, newConversation]);
-    setCurrentConversation(newConversation);
-    setInput('');
-  };
 
   // 选择对话
   const selectConversation = (conversation: Conversation) => {

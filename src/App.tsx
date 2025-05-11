@@ -1,5 +1,5 @@
-import React, { useEffect } from 'react';
-import { BrowserRouter, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
+import React from 'react';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import Navbar from './components/Navbar';
 import HistoryRecord from './components/HistoryRecord';
 import ImageRecognition from './components/ImageRecognition';
@@ -10,22 +10,9 @@ import ApiKeyManagement from './components/ApiKeyManagement';
 import ApiDocumentation from './components/ApiDocumentation';
 import { Container } from '@mui/material';
 import './App.css';
-import { TOKEN_KEY } from './utils/auth';
 
 // 路由守卫组件
-const AuthWrapper = ({ children }: { children: JSX.Element }) => {
-  const navigate = useNavigate();
-  const location = useLocation();
 
-  useEffect(() => {
-    const token = localStorage.getItem(TOKEN_KEY);
-    if (!token && location.pathname !== '/login') {
-      navigate('/login');
-    }
-  }, [navigate, location]);
-
-  return children;
-};
 
 function App() {
   const basename = process.env.NODE_ENV === 'production' 

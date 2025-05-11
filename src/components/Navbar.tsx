@@ -9,7 +9,7 @@ import {
   Menu,
   MenuItem
 } from '@mui/material';
-import { Science, History, Home, Login as LoginIcon, Logout as LogoutIcon, Chat as ChatIcon, Key as KeyIcon, Description as DocIcon } from '@mui/icons-material';
+import { Science, History, Home, Login as LoginIcon, Logout as LogoutIcon, Chat as ChatIcon, Key as KeyIcon } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { getCurrentUser, logout, isAuthenticated } from '../utils/auth';
 

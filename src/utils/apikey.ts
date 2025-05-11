@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { ApiKey, CreateApiKeyRequest, ApiKeyResponse } from '../types/apikey';
+import { ApiKey, CreateApiKeyRequest } from '../types/apikey';
 import { getCurrentUser } from './auth';
 
 // API基础URL

@@ -4,7 +4,6 @@ import {
   Paper,
   Typography,
   Box,
-  Divider,
   Table,
   TableBody,
   TableCell,
@@ -15,13 +14,11 @@ import {
   Tabs,
   Tab,
   Card,
-  CardContent,
-  useTheme
+  CardContent
 } from '@mui/material';
 import { Code as CodeIcon, Security as SecurityIcon, Speed as SpeedIcon } from '@mui/icons-material';
 
 const ApiDocumentation: React.FC = () => {
-  const theme = useTheme();
   const [tabValue, setTabValue] = React.useState(0);
 
   const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {

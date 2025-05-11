@@ -17,8 +17,6 @@ import {
   DialogContentText,
   DialogTitle,
   TextField,
-  Chip,
-  Tooltip,
   CircularProgress,
   Alert,
   Snackbar,
@@ -34,26 +32,19 @@ import {
   Add as AddIcon,
   ContentCopy as CopyIcon,
   Delete as DeleteIcon,
-  Refresh as RefreshIcon,
   Check as CheckIcon,
-  Code as CodeIcon,
-  Security as SecurityIcon,
-  Speed as SpeedIcon,
 } from '@mui/icons-material';
 import { format} from 'date-fns';
-import { zhCN } from 'date-fns/locale';
-import { getCurrentUser, isAuthenticated } from '../utils/auth';
-import { useNavigate } from 'react-router-dom';
+import { getCurrentUser} from '../utils/auth';
 import {
   getAllApiKeys,
   createApiKey,
   deleteApiKey,
   regenerateApiKey
 } from '../utils/apikey';
-import { ApiKey, CreateApiKeyRequest } from '../types/apikey';
+import { ApiKey } from '../types/apikey';
 
 const ApiKeyManagement: React.FC = () => {
-  const navigate = useNavigate();
   const [apiKeys, setApiKeys] = useState<ApiKey[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

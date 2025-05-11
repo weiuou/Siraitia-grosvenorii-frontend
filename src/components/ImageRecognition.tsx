@@ -26,7 +26,6 @@ import {
 } from '@mui/material';
 import { CloudUpload, Assessment } from '@mui/icons-material';
 import { saveHistory } from '../utils/storage';
-import { HistoryItem } from '../types/history';
 import { AnalysisResult, analyzeFlowers, FlowerDetection } from '../services/flowerAnalysis';
 import { FlowerInfo } from './FlowerAnalysisResult';
 
@@ -211,6 +210,7 @@ const ImageRecognition: React.FC = () => {
     } finally {
       setLoading(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentIndex, imageQueue, brightness, contrast, grayscale, getProcessedImageBlob]);
 
   // 批量处理启动函数
