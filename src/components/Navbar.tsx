@@ -156,23 +156,6 @@ const Navbar: React.FC = () => {
           >
             算法介绍
           </Button>
-          <Button 
-            color="inherit" 
-            startIcon={<DocIcon />}
-            onClick={() => navigate('/api-docs')}
-            sx={{ 
-              mx: 1, 
-              '&:hover': { 
-                backgroundColor: 'rgba(255, 255, 255, 0.1)' 
-              },
-              borderRadius: '3px',
-              textTransform: 'none',
-              fontWeight: 500
-            }}
-          >
-            API文档
-          </Button>
-          
           {authenticated ? (
             <>
               <Button

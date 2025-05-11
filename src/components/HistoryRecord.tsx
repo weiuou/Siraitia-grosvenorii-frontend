@@ -20,6 +20,7 @@ import { getHistory, deleteHistoryItem } from '../utils/storage';
 import { HistoryItem } from '../types/history';
 import HistoryDetailDialog from './HistoryDetailDialog';
 import ExportDialog from './ExportDialog';
+import StatisticsDialog from './StatisticsDialog';
 import { exportToExcel, exportToJSON } from '../utils/exportUtils';
 
 const HistoryRecord: React.FC = () => {
@@ -27,6 +28,7 @@ const HistoryRecord: React.FC = () => {
   const [selectedRecord, setSelectedRecord] = useState<HistoryItem | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [exportDialogOpen, setExportDialogOpen] = useState(false);
+  const [statisticsDialogOpen, setStatisticsDialogOpen] = useState(false);
   const [snackbar, setSnackbar] = useState({
     open: false,
     message: '',
@@ -52,14 +54,14 @@ const HistoryRecord: React.FC = () => {
     setSelectedRecord(null);
   };
 
-  const handleExport = async (format: string, filename: string) => {
+  const handleExport = async (format: string, filename: string, includeStats: boolean = true) => {
     try {
       switch (format) {
         case 'excel':
-          await exportToExcel(records, filename);
+          await exportToExcel(records, filename, includeStats);
           break;
         case 'json':
-          exportToJSON(records, filename);
+          exportToJSON(records, filename, includeStats);
           break;
       }
       setSnackbar({
@@ -85,7 +87,7 @@ const HistoryRecord: React.FC = () => {
           <Stack direction="row" spacing={2}>
             <Button 
               startIcon={<Timeline />}
-              onClick={() => console.log('显示统计分析')}
+              onClick={() => setStatisticsDialogOpen(true)}
               sx={{ 
                 backgroundColor: '#fafbfc', 
                 border: '1px solid rgba(27, 31, 35, 0.15)', 
@@ -217,6 +219,11 @@ const HistoryRecord: React.FC = () => {
         open={dialogOpen}
         record={selectedRecord}
         onClose={handleCloseDialog}
+      />
+      <StatisticsDialog
+        open={statisticsDialogOpen}
+        records={records}
+        onClose={() => setStatisticsDialogOpen(false)}
       />
       <Snackbar
         open={snackbar.open}

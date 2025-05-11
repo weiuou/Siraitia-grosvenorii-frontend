@@ -3,7 +3,7 @@ import { ApiKey, CreateApiKeyRequest, ApiKeyResponse } from '../types/apikey';
 import { getCurrentUser } from './auth';
 
 // API基础URL
-const API_BASE_URL = 'http://127.0.0.1:8000';
+const API_BASE_URL = 'http://127.0.0.1:8001';
 
 // 获取所有API密钥
 export const getAllApiKeys = async (): Promise<ApiKey[]> => {
@@ -11,12 +11,13 @@ export const getAllApiKeys = async (): Promise<ApiKey[]> => {
     const response = await axios.get(`${API_BASE_URL}/auth/api-keys`, {
       // withCredentials: true
     });
-    if (!response.data) return [];
-    return response.data.map((key: any) => ({
+    if (!response.data || !response.data.api_keys) return [];
+    return response.data.api_keys.map((key: any) => ({
       id: key.id || '',
       description: key.description || '未命名密钥',
       key: key.key || '',
-      userId: key.user_id || ''
+      userId: key.user_id || '',
+      createdAt: key.created_at || '',
     }));
   } catch (error) {
     console.error('获取API密钥失败:', error);
@@ -25,7 +26,7 @@ export const getAllApiKeys = async (): Promise<ApiKey[]> => {
 };
 
 // 创建新的API密钥
-export const createApiKey = async (description: string): Promise<ApiKey> => {
+export const createApiKey = async (request: CreateApiKeyRequest): Promise<ApiKey> => {
   try {
     const currentUser = getCurrentUser();
     if (!currentUser) {
@@ -33,7 +34,8 @@ export const createApiKey = async (description: string): Promise<ApiKey> => {
     }
 
     const response = await axios.post(`${API_BASE_URL}/auth/api-keys`, {
-      description: description
+      api_key_date: request.api_key_data,
+      currentUser: request.current_user
     }, {
       headers: {
         'Content-Type': 'application/json',
@@ -46,7 +48,8 @@ export const createApiKey = async (description: string): Promise<ApiKey> => {
       id: keyData.id,
       description: keyData.description || keyData.name || '未命名密钥',
       key: keyData.key,
-      userId: currentUser.id
+      userId: currentUser.id,
+      createdAt: keyData.created_at
     };
   } catch (error) {
     if (axios.isAxiosError(error) && error.response?.status === 401) {

@@ -42,7 +42,7 @@ import {
 } from '@mui/icons-material';
 import { format} from 'date-fns';
 import { zhCN } from 'date-fns/locale';
-import { isAuthenticated } from '../utils/auth';
+import { getCurrentUser, isAuthenticated } from '../utils/auth';
 import { useNavigate } from 'react-router-dom';
 import {
   getAllApiKeys,
@@ -62,6 +62,7 @@ const ApiKeyManagement: React.FC = () => {
   const [openRegenerateDialog, setOpenRegenerateDialog] = useState(false);
   const [selectedKeyId, setSelectedKeyId] = useState<string | null>(null);
   const [newKeyName, setNewKeyName] = useState('');
+  const [newKeyDescription, setNewKeyDescription] = useState('');
   const [snackbar, setSnackbar] = useState<{open: boolean, message: string, severity: 'success' | 'error'}>({open: false, message: '', severity: 'success'});
   const [copiedKeyId, setCopiedKeyId] = useState<string | null>(null);
   const [tabValue, setTabValue] = useState(0);
@@ -92,11 +93,30 @@ const ApiKeyManagement: React.FC = () => {
     }
 
     try {
-      // 直接传递名称字符串而不是对象
-      const newKey = await createApiKey(newKeyName.trim());
+      const currentUser = getCurrentUser();
+      if (!currentUser || !currentUser.id || !currentUser.username) {
+        setSnackbar({open: true, message: '用户信息不完整，请重新登录', severity: 'error'});
+        return;
+      }
+      
+      const apiKeyData = {
+        name: newKeyName.trim(),
+        description: newKeyDescription.trim(),
+        permissions: ['read', 'write'] // 默认权限
+      };
+      
+      const newKey = await createApiKey({
+        api_key_data: apiKeyData,
+        current_user: {
+          id: Number(currentUser.id),
+          username: currentUser.username
+        }
+      });
+      
       setApiKeys([...apiKeys, newKey]);
       setOpenCreateDialog(false);
       setNewKeyName('');
+      setNewKeyDescription('');
       setSnackbar({open: true, message: '密钥创建成功', severity: 'success'});
     } catch (err) {
       setSnackbar({open: true, message: err instanceof Error ? err.message : '创建密钥失败', severity: 'error'});
@@ -209,6 +229,7 @@ const ApiKeyManagement: React.FC = () => {
                   <TableCell sx={{ fontWeight: 600 }}>描述</TableCell>
                   <TableCell sx={{ fontWeight: 600 }}>密钥</TableCell>
                   <TableCell sx={{ fontWeight: 600 }}>用户ID</TableCell>
+                  <TableCell sx={{ fontWeight: 600 }}>创建时间</TableCell>
                   <TableCell sx={{ fontWeight: 600 }} align="right">操作</TableCell>
                 </TableRow>
               </TableHead>
@@ -247,6 +268,7 @@ const ApiKeyManagement: React.FC = () => {
                         </Box>
                       </TableCell>
                       <TableCell>{key.userId}</TableCell>
+                      <TableCell>{formatDate(key.createdAt)}</TableCell>
                       <TableCell align="right">
                         <IconButton
                           onClick={() => {
@@ -385,6 +407,16 @@ const ApiKeyManagement: React.FC = () => {
             variant="outlined"
             value={newKeyName}
             onChange={(e) => setNewKeyName(e.target.value)}
+          />
+          <TextField
+            margin="dense"
+            label="密钥描述"
+            type="text"
+            fullWidth
+            variant="outlined"
+            value={newKeyDescription}
+            onChange={(e) => setNewKeyDescription(e.target.value)}
+            sx={{ mt: 2 }}
           />
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 2 }}>

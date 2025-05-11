@@ -146,6 +146,16 @@ export const logout = (): void => {
   localStorage.removeItem(TOKEN_KEY);
 };
 
+// 检查登录状态并跳转
+export const checkAuth = (): boolean => {
+  const token = localStorage.getItem(TOKEN_KEY);
+  if (!token) {
+    window.location.href = '/login';
+    return false;
+  }
+  return true;
+};
+
 // 获取当前登录用户
 export const getCurrentUser = (): User | null => {
   const userJson = localStorage.getItem(USER_KEY);

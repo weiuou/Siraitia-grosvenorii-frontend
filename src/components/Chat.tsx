@@ -8,17 +8,17 @@ import {
   Container,
   CircularProgress,
   Avatar,
-  Divider,
   IconButton,
   List,
   ListItem,
   ListItemText,
-  ListItemAvatar,
   useTheme,
   useMediaQuery
 } from '@mui/material';
-import { Send as SendIcon, SmartToy as BotIcon, Person as PersonIcon, Delete as DeleteIcon } from '@mui/icons-material';
+import { Send as SendIcon, SmartToy as BotIcon, Person as PersonIcon, Delete as DeleteIcon, Download as DownloadIcon } from '@mui/icons-material';
 import axios from 'axios';
+import ReactMarkdown from 'react-markdown';
+import 'katex/dist/katex.min.css';
 // 移除不需要的身份验证导入
 // import { getCurrentUser, isAuthenticated } from '../utils/auth';
 import { useNavigate } from 'react-router-dom';
@@ -27,7 +27,7 @@ import { useNavigate } from 'react-router-dom';
 interface Message {
   id: string;
   content: string;
-  role: 'user' | 'assistant';
+  role: 'user' | 'assistant' | 'system';
   timestamp: Date;
 }
 
@@ -40,7 +40,6 @@ interface Conversation {
 }
 
 const Chat: React.FC = () => {
-  const navigate = useNavigate();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const [input, setInput] = useState('');
@@ -71,26 +70,14 @@ const Chat: React.FC = () => {
       title: `新对话 ${conversations.length + 1}`,
       messages: [
         {
+          id: '0',
+          content: '你是一位专业的罗汉果种植农业专家，拥有丰富的罗汉果种植、培育和管理经验。你只回答与罗汉果（Siraitia grosvenorii）相关的问题，包括但不限于罗汉果的种植技术、病虫害防治、授粉技巧、采收加工、品种选择等方面的专业知识。如果用户询问与罗汉果无关的问题，请礼貌地告知用户你只能回答罗汉果相关的问题，并建议用户提出罗汉果相关的问题。请用专业、清晰、易懂的语言回答问题，必要时可以提供具体的操作步骤和注意事项。',
+          role: 'system',
+          timestamp: new Date()
+        },
+        {
           id: '1',
-          content: '罗汉果花的最佳授粉时期是什么时候？',
-          role: 'user',
-          timestamp: new Date()
-        },
-        {
-          id: '2',
-          content: '罗汉果花的最佳授粉时期是在花朵完全开放后的上午9点至11点之间。这个时段有以下几个特点：\n\n1. 温度适中：此时气温适宜（20-25℃），花粉活力最强\n2. 湿度合适：早晨露水已经消散，但空气湿度仍然适中\n3. 雌花最敏感：雌花柱头在这个时间段最容易接受花粉\n4. 雄花花粉量大：雄花在这个时间段花粉释放量最大\n\n要注意的是，如果当天下雨或者湿度过大，建议等待合适的天气再进行授粉。同时，花朵开放后48小时内进行授粉的效果最好。',
-          role: 'assistant',
-          timestamp: new Date()
-        },
-        {
-          id: '3',
-          content: '如何区分罗汉果的雌花和雄花？',
-          role: 'user',
-          timestamp: new Date()
-        },
-        {
-          id: '4',
-          content: '罗汉果的雌花和雄花有几个明显的区别特征：\n\n雌花特征：\n1. 花朵下方有明显的子房，呈圆球形\n2. 花瓣较大，通常4-5片\n3. 单朵生长\n4. 花柱明显，顶端有柱头\n\n雄花特征：\n1. 花朵下方无子房\n2. 花瓣较小\n3. 常3-7朵簇生\n4. 有明显的雄蕊，花药呈黄色\n\n识别技巧：\n- 最简单的方法是看花朵下方是否有圆球形的子房\n- 观察花朵的数量：单朵的很可能是雌花\n- 雌花整体较为粗壮，雄花较为纤细\n\n准确区分雌雄花对于授粉和产量都很重要，建议在花期多加观察和实践。',
+          content: '您好！我是罗汉果种植专家，可以为您提供罗汉果种植、培育和管理方面的专业建议。请问您有什么关于罗汉果的问题需要咨询吗？',
           role: 'assistant',
           timestamp: new Date()
         }
@@ -156,9 +143,8 @@ const Chat: React.FC = () => {
     setError(null);
     
     try {
-      // 这里应该调用后端API获取AI回复
-      // 模拟API调用
-      const API_BASE_URL = 'http://127.0.0.1:8000';
+      // 调用DeepSeek API获取AI回复
+      const API_BASE_URL = 'https://api.deepseek.com';
       const response = await axios.post(
         `${API_BASE_URL}/chat/completions`,
         {
@@ -166,14 +152,17 @@ const Chat: React.FC = () => {
             role: msg.role,
             content: msg.content
           })),
-          model: 'gpt-3.5-turbo' // 或其他模型
+          model: 'deepseek-chat', // 使用DeepSeek模型
+          temperature: 0.7, // 控制创造性
+          top_p: 0.9, // 控制多样性
+          max_tokens: 1000 // 限制回复长度
         },
         {
           headers: {
             'Content-Type': 'application/json',
-            'Accept': 'application/json'
-          },
-          withCredentials: true
+            'Accept': 'application/json',
+            'Authorization': `Bearer ${process.env.REACT_APP_DEEPSEEK_API_KEY}`
+          }
         }
       );
       
@@ -210,7 +199,7 @@ const Chat: React.FC = () => {
         if (error.response) {
           // 服务器返回了错误状态码
           if (error.response.status === 401) {
-            errorMessage = '认证失败，请重新登录';
+            errorMessage = 'DeepSeek认证服务暂时不可用，请稍后再试';
           } else if (error.response.status === 404) {
             errorMessage = 'API端点不存在，请检查服务器配置';
           } else if (error.response.status >= 500) {
@@ -230,18 +219,19 @@ const Chat: React.FC = () => {
       }
       
       setError(errorMessage);
+      console.error('DeepSeek API调用失败:', errorMessage);
       
-      // 模拟AI回复（实际项目中应删除此部分）
-      const mockAssistantMessage: Message = {
+      // 创建一个友好的错误提示消息
+      const errorAssistantMessage: Message = {
         id: (Date.now() + 1).toString(),
-        content: '我是AI助手，很高兴为您服务。由于当前是演示模式，我的回复是预设的。在实际项目中，这里会连接到真实的AI服务。',
+        content: '很抱歉，我暂时无法回答您的问题。请稍后再试，或者尝试提出另一个关于罗汉果的问题。',
         role: 'assistant',
         timestamp: new Date()
       };
       
       const finalConversation = {
         ...updatedConversation,
-        messages: [...updatedConversation.messages, mockAssistantMessage]
+        messages: [...updatedConversation.messages, errorAssistantMessage]
       };
       
       setCurrentConversation(finalConversation);
@@ -261,6 +251,41 @@ const Chat: React.FC = () => {
     }
   };
 
+  // 导出对话
+  const exportConversation = () => {
+    if (!currentConversation) return;
+    
+    // 过滤掉系统消息，只保留用户和助手的对话
+    const messages = currentConversation.messages
+      .filter(message => message.role !== 'system')
+      .map(message => ({
+        role: message.role === 'assistant' ? '助手' : '用户',
+        content: message.content,
+        time: new Date(message.timestamp).toLocaleString()
+      }));
+    
+    // 生成导出文本
+    const exportText = messages
+      .map(msg => `${msg.time}\n${msg.role}：${msg.content}\n`)
+      .join('\n');
+    
+    // 创建Blob对象
+    const blob = new Blob([exportText], { type: 'text/plain;charset=utf-8' });
+    
+    // 创建下载链接
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `${currentConversation.title}-${new Date().toLocaleDateString()}.txt`;
+    
+    // 触发下载
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    // 释放URL对象
+    URL.revokeObjectURL(link.href);
+  };
+
   return (
     <Container maxWidth="xl" sx={{ height: 'calc(100vh - 64px)', display: 'flex', p: 2 }}>
       {/* 左侧对话列表 */}
@@ -278,20 +303,39 @@ const Chat: React.FC = () => {
           }}
         >
           <Box sx={{ p: 2, borderBottom: '1px solid #e1e4e8' }}>
-            <Button 
-              variant="contained" 
-              fullWidth 
-              onClick={createNewConversation}
-              sx={{ 
-                backgroundColor: '#2ea44f', 
-                '&:hover': { backgroundColor: '#2c974b' },
-                textTransform: 'none',
-                fontWeight: 500,
-                borderRadius: '6px'
-              }}
-            >
-              新对话
-            </Button>
+            <Box sx={{ display: 'flex', gap: 1 }}>
+              <Button 
+                variant="contained" 
+                fullWidth 
+                onClick={createNewConversation}
+                sx={{ 
+                  backgroundColor: '#2ea44f', 
+                  '&:hover': { backgroundColor: '#2c974b' },
+                  textTransform: 'none',
+                  fontWeight: 500,
+                  borderRadius: '6px'
+                }}
+              >
+                新对话
+              </Button>
+              <Button
+                variant="outlined"
+                onClick={exportConversation}
+                disabled={!currentConversation}
+                sx={{
+                  borderColor: '#2ea44f',
+                  color: '#2ea44f',
+                  '&:hover': {
+                    borderColor: '#2c974b',
+                    backgroundColor: 'rgba(46, 164, 79, 0.04)'
+                  },
+                  minWidth: 'auto',
+                  px: 1
+                }}
+              >
+                <DownloadIcon />
+              </Button>
+            </Box>
           </Box>
           
           <List sx={{ overflow: 'auto', flexGrow: 1 }}>
@@ -350,7 +394,7 @@ const Chat: React.FC = () => {
             flexGrow: 1, 
             overflow: 'auto', 
             p: 2,
-            display: 'flex',
+            display: 'flex-start',
             flexDirection: 'column',
             bgcolor: '#f6f8fa'
           }}
@@ -360,59 +404,108 @@ const Chat: React.FC = () => {
               sx={{ 
                 display: 'flex', 
                 flexDirection: 'column', 
-                alignItems: 'center', 
-                justifyContent: 'center',
+                alignItems: 'left', 
+                justifyContent: 'left',
                 height: '100%',
                 opacity: 0.7
               }}
             >
               <BotIcon sx={{ fontSize: 60, mb: 2, color: '#2ea44f' }} />
               <Typography variant="h5" sx={{ fontWeight: 500, mb: 1 }}>
-                AI助手
+                罗汉果农业专家
               </Typography>
-              <Typography variant="body1" color="textSecondary" align="center">
-                有任何问题都可以向我提问
+              <Typography variant="body1" color="textSecondary" align="left">
+                您好！我是罗汉果种植专家，可以回答关于罗汉果种植、培育和管理的专业问题。
               </Typography>
             </Box>
           ) : (
-            currentConversation?.messages.map((message) => (
-              <Box 
-                key={message.id} 
-                sx={{ 
-                  display: 'flex',
-                  mb: 3,
-                  alignItems: 'flex-start'
-                }}
-              >
-                <Avatar 
+            currentConversation?.messages
+              .filter(message => message.role !== 'system')
+              .map((message) => (
+                <Box 
+                  key={message.id} 
                   sx={{ 
-                    mr: 2, 
-                    bgcolor: message.role === 'assistant' ? '#2ea44f' : '#0969da',
-                    width: 36,
-                    height: 36
+                    display: 'flex',
+                    mb: 3,
+                    alignItems: 'flex-start',
+                    flexDirection: message.role === 'user' ? 'row-reverse' : 'row',
+                    alignSelf: message.role === 'user' ? 'flex-end' : 'flex-start'
                   }}
                 >
-                  {message.role === 'assistant' ? <BotIcon /> : <PersonIcon />}
-                </Avatar>
-                <Box sx={{ maxWidth: '80%' }}>
-                  <Typography 
-                    variant="body1" 
+                  <Avatar 
                     sx={{ 
-                      backgroundColor: message.role === 'assistant' ? 'white' : 'rgba(9, 105, 218, 0.1)',
-                      p: 2,
-                      borderRadius: '8px',
-                      boxShadow: message.role === 'assistant' ? 1 : 'none',
-                      whiteSpace: 'pre-wrap'
+                      ml: message.role === 'user' ? 2 : 0,
+                      mr: message.role === 'assistant' ? 2 : 0,
+                      bgcolor: message.role === 'assistant' ? '#2ea44f' : '#0969da',
+                      width: 36,
+                      height: 36
                     }}
                   >
-                    {message.content}
-                  </Typography>
-                  <Typography variant="caption" color="textSecondary" sx={{ mt: 0.5, display: 'block' }}>
-                    {new Date(message.timestamp).toLocaleTimeString()}
-                  </Typography>
+                    {message.role === 'assistant' ? <BotIcon /> : <PersonIcon />}
+                  </Avatar>
+                  <Box sx={{ maxWidth: '80%' }}>
+                    <Box 
+                      sx={{ 
+                        backgroundColor: message.role === 'assistant' ? 'white' : 'rgba(9, 105, 218, 0.1)',
+                        p: 2,
+                        borderRadius: '8px',
+                        boxShadow: message.role === 'assistant' ? 1 : 'none',
+                        '& .markdown-body': {
+                          backgroundColor: 'transparent',
+                          fontFamily: 'inherit',
+                        },
+                        '& pre': {
+                          margin: '16px 0',
+                          padding: '16px',
+                          backgroundColor: '#1e1e1e',
+                          borderRadius: '6px',
+                          overflow: 'auto',
+                        },
+                        '& code': {
+                          fontFamily: 'monospace',
+                          fontSize: '0.9em',
+                        },
+                        '& p': {
+                          marginBottom: '16px',
+                          '&:last-child': {
+                            marginBottom: 0,
+                          },
+                        },
+                        '& table': {
+                          borderCollapse: 'collapse',
+                          width: '100%',
+                          marginBottom: '16px',
+                        },
+                        '& th, & td': {
+                          border: '1px solid #dfe2e5',
+                          padding: '6px 13px',
+                        },
+                        '& blockquote': {
+                          borderLeft: '4px solid #dfe2e5',
+                          color: '#6a737d',
+                          marginLeft: 0,
+                          paddingLeft: '16px',
+                        },
+                      }}
+                    >
+                      <ReactMarkdown>
+                        {message.content}
+                      </ReactMarkdown>
+                    </Box>
+                    <Typography 
+                      variant="caption" 
+                      color="textSecondary" 
+                      sx={{ 
+                        mt: 0.5, 
+                        display: 'block',
+                        textAlign: message.role === 'user' ? 'right' : 'left'
+                      }}
+                    >
+                      {new Date(message.timestamp).toLocaleTimeString()}
+                    </Typography>
+                  </Box>
                 </Box>
-              </Box>
-            ))
+              ))
           )}
           {loading && (
             <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
